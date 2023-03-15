@@ -344,7 +344,7 @@ void setup(void)
 {  
   auto cfg = M5.config();
 #if defined ( ARDUINO )
-  cfg.serial_baudrate = 115200;   // default=115200. if "Serial" is not needed, set it to 0.
+  cfg.serial_baudrate = 9600;   // default=115200. if "Serial" is not needed, set it to 0.
 #endif
 
   M5.begin(cfg);
@@ -370,11 +370,8 @@ void setup(void)
 
   // for testing
   LGFX_Device* gfx = &M5.Display;
-  M5_LOGI("width = %d", gfx->width());
-  M5_LOGI("height = %d", gfx->height());
-
-  ESP_LOGD("width = %d", gfx->width());
-  ESP_LOGD("height = %d", gfx->height());
+  Serial.printf("width = %d\n", gfx->width());
+  Serial.printf("height = %d\n", gfx->height());
 }
 
 /// arduino loop() 
