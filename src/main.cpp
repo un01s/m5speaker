@@ -11,6 +11,7 @@ static constexpr char bt_device_name[] = "ESP32SPK";
 static wb::A2DP_Speaker a2dp_sink = { &M5.Speaker, 0 };
 static wb::Simple_FFT fft;
 
+/// need better way to do this
 #define FFT_SIZE 256
 
 static constexpr size_t WAVE_SIZE = 320;
