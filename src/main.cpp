@@ -350,8 +350,7 @@ void setup(void)
   M5.begin(cfg);
 
   // setup the log output level
-  M5.Log.setLogLevel(m5::log_target_callback, ESP_LOG_INFO);
-  M5_LOGI("M5_LOGI info log");
+  M5_LOGD("M5_LOGD info log");
 
   { /// custom setting
     auto spk_cfg = M5.Speaker.config();
@@ -374,8 +373,8 @@ void setup(void)
   M5_LOGI("width = %d", gfx->width());
   M5_LOGI("height = %d", gfx->height());
 
-  ESP_LOGI("width = %d", gfx->width());
-  ESP_LOGI("height = %d", gfx->height());
+  ESP_LOGD("width = %d", gfx->width());
+  ESP_LOGD("height = %d", gfx->height());
 }
 
 /// arduino loop() 
