@@ -347,7 +347,52 @@ void setup(void)
 /// arduino loop() 
 void loop(void)
 {
+gfxLoop(&M5.Display);
 
+  {
+    static int prev_frame;
+    int frame;
+    do
+    {
+      vTaskDelay(1);
+    } while (prev_frame == (frame = millis() >> 3)); /// 8 msec cycle wait
+    prev_frame = frame;
+  }
+
+  M5.update();
+  if (M5.BtnA.wasPressed())
+  {
+    M5.Speaker.tone(440, 50);
+  }
+  if (M5.BtnA.wasDeciedClickCount())
+  {
+    switch (M5.BtnA.getClickCount())
+    {
+    case 1:
+      M5.Speaker.tone(1000, 100);
+      a2dp_sink.next();
+      break;
+
+    case 2:
+      M5.Speaker.tone(800, 100);
+      a2dp_sink.previous();
+      break;
+    }
+  }
+  if (M5.BtnA.isHolding() || M5.BtnB.isPressed() || M5.BtnC.isPressed())
+  {
+    size_t v = M5.Speaker.getVolume();
+    int add = (M5.BtnB.isPressed()) ? -1 : 1;
+    if (M5.BtnA.isHolding())
+    {
+      add = M5.BtnA.getClickCount() ? -1 : 1;
+    }
+    v += add;
+    if (v <= 255)
+    {
+      M5.Speaker.setVolume(v);
+    }
+  }
 }
 
 #if !defined ( ARDUINO )
