@@ -242,7 +242,9 @@ void gfxLoop(LGFX_Device* gfx)
       gfx->display();
 
       // draw FFT level meter
+      // run FFT first
       fft.exec(raw_data);
+      // bw = 5 = 320/60
       size_t bw = gfx->width() / 60;
       if (bw < 3) { bw = 3; }
       int32_t dsp_height = gfx->height();
