@@ -5,7 +5,7 @@
 namespace wb {
 
 #define FFT_SIZE 256
-#define M_PI 3.141592653
+//#define M_PI 3.141592653
 
 class Simple_FFT 
 {

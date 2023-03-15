@@ -5,6 +5,8 @@
 #include "A2DP_Speaker.hpp"
 #include "Simple_FFT.hpp"
 
+#include <esp_log.h>
+
 /// set ESP32-A2DP device name
 static constexpr char bt_device_name[] = "ESP32SPK";
 
@@ -156,6 +158,7 @@ void gfxLoop(LGFX_Device* gfx)
       gfx->endWrite();
     }
   }
+
   if (!gfx->displayBusy())
   { // draw volume bar
     static int px;
@@ -206,7 +209,12 @@ void gfxLoop(LGFX_Device* gfx)
           uint32_t lv = abs(raw_data[j]);
           if (level < lv) { level = lv; }
         }
-
+        // level is the max of 20 samples of one channel
+        // normalize to the width
+        // each channel has the height of 2 pixels
+        // first channel starts at 0 of y
+        // second channel starts at 3 of y
+        // use different color based on previous max to current max, px < x
         int32_t x = (level * gfx->width()) / INT16_MAX;
         int32_t px = prev_x[i];
         if (px != x)
@@ -214,6 +222,7 @@ void gfxLoop(LGFX_Device* gfx)
           gfx->fillRect(x, i * 3, px - x, 2, px < x ? 0xFF9900u : 0x330000u);
           prev_x[i] = x;
         }
+        // peak_x is the max of all maxium values
         px = peak_x[i];
         if (px > x)
         {
@@ -330,9 +339,17 @@ void gfxLoop(LGFX_Device* gfx)
 
 /// arduion setup()
 void setup(void)
-{
+{  
   auto cfg = M5.config();
+#if defined ( ARDUINO )
+  cfg.serial_baudrate = 115200;   // default=115200. if "Serial" is not needed, set it to 0.
+#endif
+
   M5.begin(cfg);
+
+  // setup the log output level
+  M5.Log.setLogLevel(m5::log_target_callback, ESP_LOG_INFO);
+  M5_LOGI("M5_LOGI info log");
 
   { /// custom setting
     auto spk_cfg = M5.Speaker.config();
@@ -349,6 +366,14 @@ void setup(void)
   a2dp_sink.start(bt_device_name, false);
 
   gfxSetup(&M5.Display);
+
+  // for testing
+  LGFX_Device* gfx = &M5.Display;
+  M5_LOGI("width = %d", gfx->width());
+  M5_LOGI("height = %d", gfx->height());
+
+  ESP_LOGI("width = %d", gfx->width());
+  ESP_LOGI("height = %d", gfx->height());
 }
 
 /// arduino loop() 
