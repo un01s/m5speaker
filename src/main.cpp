@@ -187,13 +187,20 @@ void gfxLoop(LGFX_Device* gfx)
     auto buf = a2dp_sink.getBuffer();
     if (buf)
     {
+      // WAVE_SIZE = 320
+      // data int16_t, stereo = 2 channels
+      // buf is from A2DP sink
+      // raw_data is used for preprocessing like sampling and FFT 
       memcpy(raw_data, buf, WAVE_SIZE * 2 * sizeof(int16_t)); // stereo data copy
       gfx->startWrite();
 
       // draw stereo level meter
+      // 2 means 2 channels for stereo
       for (size_t i = 0; i < 2; ++i)
       {
         int32_t level = 0;
+        // sampling here for stereo level meter
+        // 640/32 = 20 samples, then find the max value from 20 samples
         for (size_t j = i; j < 640; j += 32)
         {
           uint32_t lv = abs(raw_data[j]);
@@ -347,7 +354,7 @@ void setup(void)
 /// arduino loop() 
 void loop(void)
 {
-gfxLoop(&M5.Display);
+  gfxLoop(&M5.Display);
 
   {
     static int prev_frame;

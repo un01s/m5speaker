@@ -73,6 +73,19 @@ void Simple_FFT::exec(const int16_t* in)
 
 uint32_t Simple_FFT::get(size_t index)
 {
+    // both _fr[i] and _fi[i] are real and imaginary parts
+    // here to get the energy only
+    // FFT_SIZE is 256
+    // FFT is basically a change of domain. 
+    // in the time domain, the signal is a function of time.
+    // in the frequency domain, the basis is a set of sine waves. 
+    // in order to describe all possible inputs
+    // that is, to represent each sine wave with phase and amplitude,
+    // complex numbers are required for the FFT result.
+    // so the amplitude is encoded as the magnitude of the complex number 
+    // (sqrt(x^2+y^2))
+    // the phase is encoded as the angle (atan2(y,x)).
+    // 
     return (index < FFT_SIZE / 2) ? (uint32_t)sqrtf(_fr[ index ] * _fr[ index ] + _fi[ index ] * _fi[ index ]) : 0u;
 }
 
