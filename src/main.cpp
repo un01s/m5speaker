@@ -1,266 +1,19 @@
-
 #include <M5UnitLCD.h>
 #include <M5UnitOLED.h>
 #include <M5Unified.h>
 
-/// need ESP32-A2DP library. ( URL : https://github.com/pschatzmann/ESP32-A2DP/ )
-#include <BluetoothA2DPSink.h>
-
-/// set M5Speaker virtual channel (0-7)
-static constexpr uint8_t m5spk_virtual_channel = 0;
+#include "A2DP_Speaker.hpp"
+#include "Simple_FFT.hpp"
 
 /// set ESP32-A2DP device name
 static constexpr char bt_device_name[] = "ESP32SPK";
 
-
-class BluetoothA2DPSink_M5Speaker : public BluetoothA2DPSink
-{
-public:
-  BluetoothA2DPSink_M5Speaker(m5::Speaker_Class* m5sound, uint8_t virtual_channel = 0)
-  : BluetoothA2DPSink()
-  {
-    is_i2s_output = false; // I2S control by BluetoothA2DPSink is not required.
-  }
-
-  // get rawdata buffer for FFT.
-  const int16_t* getBuffer(void) const { return _tri_buf[_export_index]; }
-
-  const char* getMetaData(size_t id, bool clear_flg = true) { if (clear_flg) { _meta_bits &= ~(1<<id); } return (id < metatext_num) ? _meta_text[id] : nullptr; }
-
-  uint8_t getMetaUpdateInfo(void) const { return _meta_bits; }
-  void clearMetaUpdateInfo(void) { _meta_bits = 0; }
-
-  void clear(void)
-  {
-    for (int i = 0; i < 3; ++i)
-    {
-      if (_tri_buf[i]) { memset(_tri_buf[i], 0, _tri_buf_size[i]); }
-    }
-  }
-
-  static constexpr size_t metatext_size = 128;
-  static constexpr size_t metatext_num = 3;
-
-protected:
-  int16_t* _tri_buf[3] = { nullptr, nullptr, nullptr };
-  size_t _tri_buf_size[3] = { 0, 0, 0 };
-  size_t _tri_index = 0;
-  size_t _export_index = 0;
-  char _meta_text[metatext_num][metatext_size];
-  uint8_t _meta_bits = 0;
-  size_t _sample_rate = 48000;
-
-  void clearMetaData(void)
-  {
-    for (int i = 0; i < metatext_num; ++i)
-    {
-      _meta_text[i][0] = 0;
-    }
-    _meta_bits = (1<<metatext_num)-1;
-  }
-
-  void av_hdl_a2d_evt(uint16_t event, void *p_param) override
-  {
-    esp_a2d_cb_param_t* a2d = (esp_a2d_cb_param_t *)(p_param);
-
-    switch (event) {
-    case ESP_A2D_CONNECTION_STATE_EVT:
-      if (ESP_A2D_CONNECTION_STATE_CONNECTED == a2d->conn_stat.state)
-      { // 接続
-
-      }
-      else
-      if (ESP_A2D_CONNECTION_STATE_DISCONNECTED == a2d->conn_stat.state)
-      { // 切断
-
-      }
-      break;
-
-    case ESP_A2D_AUDIO_STATE_EVT:
-      if (ESP_A2D_AUDIO_STATE_STARTED == a2d->audio_stat.state)
-      { // 再生
-
-      } else
-      if ( ESP_A2D_AUDIO_STATE_REMOTE_SUSPEND == a2d->audio_stat.state
-        || ESP_A2D_AUDIO_STATE_STOPPED        == a2d->audio_stat.state )
-      { // 停止
-        clearMetaData();
-        clear();
-      }
-      break;
-
-    case ESP_A2D_AUDIO_CFG_EVT:
-      {
-        esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)(p_param);
-        size_t tmp = a2d->audio_cfg.mcc.cie.sbc[0];
-        size_t rate = 16000;
-        if (     tmp & (1 << 6)) { rate = 32000; }
-        else if (tmp & (1 << 5)) { rate = 44100; }
-        else if (tmp & (1 << 4)) { rate = 48000; }
-        _sample_rate = rate;
-      }
-      break;
-
-    default:
-      break;
-    }
-
-    BluetoothA2DPSink::av_hdl_a2d_evt(event, p_param);
-  }
-
-  void av_hdl_avrc_evt(uint16_t event, void *p_param) override
-  {
-    esp_avrc_ct_cb_param_t *rc = (esp_avrc_ct_cb_param_t *)(p_param);
-
-    switch (event)
-    {
-    case ESP_AVRC_CT_METADATA_RSP_EVT:
-      for (size_t i = 0; i < metatext_num; ++i)
-      {
-        if (0 == (rc->meta_rsp.attr_id & (1 << i))) { continue; }
-        strncpy(_meta_text[i], (char*)(rc->meta_rsp.attr_text), metatext_size);
-        _meta_bits |= rc->meta_rsp.attr_id;
-        break;
-      }
-      break;
-
-    case ESP_AVRC_CT_CONNECTION_STATE_EVT:
-      break;
-
-    case ESP_AVRC_CT_CHANGE_NOTIFY_EVT:
-      break;
-
-    default:
-      break;
-    }
-
-    BluetoothA2DPSink::av_hdl_avrc_evt(event, p_param);
-  }
-
-  int16_t* get_next_buf(const uint8_t* src_data, uint32_t len)
-  {
-    size_t tri = _tri_index < 2 ? _tri_index + 1 : 0;
-    if (_tri_buf_size[tri] < len)
-    {
-      _tri_buf_size[tri] = len;
-      if (_tri_buf[tri] != nullptr) { heap_caps_free(_tri_buf[tri]); }
-      auto tmp = (int16_t*)heap_caps_malloc(len, MALLOC_CAP_8BIT);
-      _tri_buf[tri] = tmp;
-      if (tmp == nullptr)
-      {
-        _tri_buf_size[tri] = 0;
-        return nullptr;
-      }
-    }
-    memcpy(_tri_buf[tri], src_data, len);
-    _tri_index = tri;
-    return _tri_buf[tri];
-  }
-
-  void audio_data_callback(const uint8_t *data, uint32_t length) override
-  {
-    // Reduce memory requirements by dividing the received data into the first and second halves.
-    length >>= 1;
-    M5.Speaker.playRaw(get_next_buf( data        , length), length >> 1, _sample_rate, true, 1, m5spk_virtual_channel);
-    M5.Speaker.playRaw(get_next_buf(&data[length], length), length >> 1, _sample_rate, true, 1, m5spk_virtual_channel);
-    _export_index = _tri_index;
-  }
-};
-
+static wb::A2DP_Speaker a2dp_sink = { &M5.Speaker, 0 };
+static wb::Simple_FFT fft;
 
 #define FFT_SIZE 256
-class fft_t
-{
-  float _wr[FFT_SIZE + 1];
-  float _wi[FFT_SIZE + 1];
-  float _fr[FFT_SIZE + 1];
-  float _fi[FFT_SIZE + 1];
-  uint16_t _br[FFT_SIZE + 1];
-  size_t _ie;
-
-public:
-  fft_t(void)
-  {
-#ifndef M_PI
-#define M_PI 3.141592653
-#endif
-    _ie = logf( (float)FFT_SIZE ) / log(2.0) + 0.5;
-    static constexpr float omega = 2.0f * M_PI / FFT_SIZE;
-    static constexpr int s4 = FFT_SIZE / 4;
-    static constexpr int s2 = FFT_SIZE / 2;
-    for ( int i = 1 ; i < s4 ; ++i)
-    {
-    float f = cosf(omega * i);
-      _wi[s4 + i] = f;
-      _wi[s4 - i] = f;
-      _wr[     i] = f;
-      _wr[s2 - i] = -f;
-    }
-    _wi[s4] = _wr[0] = 1;
-
-    size_t je = 1;
-    _br[0] = 0;
-    _br[1] = FFT_SIZE / 2;
-    for ( size_t i = 0 ; i < _ie - 1 ; ++i )
-    {
-      _br[ je << 1 ] = _br[ je ] >> 1;
-      je = je << 1;
-      for ( size_t j = 1 ; j < je ; ++j )
-      {
-        _br[je + j] = _br[je] + _br[j];
-      }
-    }
-  }
-
-  void exec(const int16_t* in)
-  {
-    memset(_fi, 0, sizeof(_fi));
-    for ( size_t j = 0 ; j < FFT_SIZE / 2 ; ++j )
-    {
-      float basej = 0.25 * (1.0-_wr[j]);
-      size_t r = FFT_SIZE - j - 1;
-
-      /// perform han window and stereo to mono convert.
-      _fr[_br[j]] = basej * (in[j * 2] + in[j * 2 + 1]);
-      _fr[_br[r]] = basej * (in[r * 2] + in[r * 2 + 1]);
-    }
-
-    size_t s = 1;
-    size_t i = 0;
-    do
-    {
-      size_t ke = s;
-      s <<= 1;
-      size_t je = FFT_SIZE / s;
-      size_t j = 0;
-      do
-      {
-        size_t k = 0;
-        do
-        {
-          size_t l = s * j + k;
-          size_t m = ke * (2 * j + 1) + k;
-          size_t p = je * k;
-          float Wxmr = _fr[m] * _wr[p] + _fi[m] * _wi[p];
-          float Wxmi = _fi[m] * _wr[p] - _fr[m] * _wi[p];
-          _fr[m] = _fr[l] - Wxmr;
-          _fi[m] = _fi[l] - Wxmi;
-          _fr[l] += Wxmr;
-          _fi[l] += Wxmi;
-        } while ( ++k < ke) ;
-      } while ( ++j < je );
-    } while ( ++i < _ie );
-  }
-
-  uint32_t get(size_t index)
-  {
-    return (index < FFT_SIZE / 2) ? (uint32_t)sqrtf(_fr[ index ] * _fr[ index ] + _fi[ index ] * _fi[ index ]) : 0u;
-  }
-};
 
 static constexpr size_t WAVE_SIZE = 320;
-static BluetoothA2DPSink_M5Speaker a2dp_sink = { &M5.Speaker, m5spk_virtual_channel };
-static fft_t fft;
 static bool fft_enabled = false;
 static bool wave_enabled = false;
 static uint16_t prev_y[(FFT_SIZE / 2)+1];
@@ -270,7 +23,7 @@ static int16_t wave_h[WAVE_SIZE];
 static int16_t raw_data[WAVE_SIZE * 2];
 static int header_height = 0;
 
-
+/// GFX stuff to handle the display
 uint32_t bgcolor(LGFX_Device* gfx, int y)
 {
   auto h = gfx->height();
@@ -342,7 +95,7 @@ void gfxLoop(LGFX_Device* gfx)
         if (y+12 >= header_height) { continue; }
         gfx->setCursor(4, 8 + y);
         gfx->fillRect(0, 8 + y, gfx->width(), 12, gfx->getBaseColor());
-        gfx->print(a2dp_sink.getMetaData(id));
+        gfx->print(a2dp_sink.getMetaData(id, true));
         gfx->print(" "); // Garbage data removal when UTF8 characters are broken in the middle.
       }
       gfx->display();
@@ -567,25 +320,11 @@ void gfxLoop(LGFX_Device* gfx)
   }
 }
 
-
+/// arduion setup()
 void setup(void)
 {
   auto cfg = M5.config();
-
-  // If you want to play sound from ModuleDisplay, write this
-//  cfg.external_speaker.module_display = true;
-
-  // If you want to play sound from ModuleRCA, write this
-//  cfg.external_speaker.module_rca     = true;
-
-  // If you want to play sound from HAT Speaker, write this
-  cfg.external_speaker.hat_spk        = true;
-
-  // If you want to play sound from ATOMIC Speaker, write this
-  cfg.external_speaker.atomic_spk     = true;
-
   M5.begin(cfg);
-
 
   { /// custom setting
     auto spk_cfg = M5.Speaker.config();
@@ -597,8 +336,6 @@ void setup(void)
     // spk_cfg.dma_buf_len = 512;
     M5.Speaker.config(spk_cfg);
   }
-
-
   M5.Speaker.begin();
 
   a2dp_sink.start(bt_device_name, false);
@@ -606,54 +343,10 @@ void setup(void)
   gfxSetup(&M5.Display);
 }
 
+/// arduino loop() 
 void loop(void)
 {
-  gfxLoop(&M5.Display);
 
-  {
-    static int prev_frame;
-    int frame;
-    do
-    {
-      vTaskDelay(1);
-    } while (prev_frame == (frame = millis() >> 3)); /// 8 msec cycle wait
-    prev_frame = frame;
-  }
-
-  M5.update();
-  if (M5.BtnA.wasPressed())
-  {
-    M5.Speaker.tone(440, 50);
-  }
-  if (M5.BtnA.wasDeciedClickCount())
-  {
-    switch (M5.BtnA.getClickCount())
-    {
-    case 1:
-      M5.Speaker.tone(1000, 100);
-      a2dp_sink.next();
-      break;
-
-    case 2:
-      M5.Speaker.tone(800, 100);
-      a2dp_sink.previous();
-      break;
-    }
-  }
-  if (M5.BtnA.isHolding() || M5.BtnB.isPressed() || M5.BtnC.isPressed())
-  {
-    size_t v = M5.Speaker.getVolume();
-    int add = (M5.BtnB.isPressed()) ? -1 : 1;
-    if (M5.BtnA.isHolding())
-    {
-      add = M5.BtnA.getClickCount() ? -1 : 1;
-    }
-    v += add;
-    if (v <= 255)
-    {
-      M5.Speaker.setVolume(v);
-    }
-  }
 }
 
 #if !defined ( ARDUINO )
