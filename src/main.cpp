@@ -271,15 +271,15 @@ void gfxLoop(LGFX_Device* gfx)
         int32_t py = prev_y[bx];
         if (y != py)
         {
-          //gfx->fillRect(x, y, bw - 1, py - y, bar_color[(y < py)]);
-          gfx->fillRect(x, y, bw - 1, py - y, palette.get_color(y));
+          gfx->fillRect(x, y, bw - 1, py - y, bar_color[(y < py)]);
+          //gfx->fillRect(x, y, bw - 1, py - y, palette.get_color(y+100));
           prev_y[bx] = y;
         }
         py = peak_y[bx] + 1;
         if (py < y)
         {
-          //gfx->writeFastHLine(x, py - 1, bw - 1, bgcolor(gfx, py - 1));
           gfx->writeFastHLine(x, py - 1, bw - 1, bgcolor(gfx, py - 1));
+          //gfx->writeFastHLine(x, py - 1, bw - 1, palette.get_color(py+100));
         }
         else
         {
@@ -289,8 +289,11 @@ void gfxLoop(LGFX_Device* gfx)
         {
           peak_y[bx] = py;
           //gfx->writeFastHLine(x, py, bw - 1, TFT_WHITE);
-          gfx->writeFastHLine(x, py, bw - 1, TFT_WHITE);
+          gfx->writeFastHLine(x, py, bw - 1, TFT_RED);
+          //gfx->writeFastHLine(x, py, bw - 1, TFT_YELLOW);
         }
+        // y=1074364467, py=1073522256
+        //Serial.printf("y=%d, py=%d\n");
         
         //Serial.printf("fft_height = %d\n", fft_height);
         // ftt_height = 194 = 240 - 45(header_height) - 1
