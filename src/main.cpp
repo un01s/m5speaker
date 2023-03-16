@@ -68,6 +68,7 @@ void gfxSetup(LGFX_Device* gfx)
     {
       gfx->drawFastHLine(0, y, gfx->width(), bgcolor(gfx, y));
     }
+    // all the background lines are drawn.
   }
 
   for (int x = 0; x < (FFT_SIZE/2)+1; ++x)
@@ -283,7 +284,9 @@ void gfxLoop(LGFX_Device* gfx)
           peak_y[bx] = py;
           gfx->writeFastHLine(x, py, bw - 1, TFT_WHITE);
         }
-
+        
+        //Serial.printf("fft_height = %d\n", fft_height);
+        // ftt_height = 194
 
         if (wave_enabled)
         {
@@ -366,12 +369,15 @@ void setup(void)
 
   a2dp_sink.start(bt_device_name, false);
 
+  Serial.printf("header_height = %d\n", header_height); // 0
   gfxSetup(&M5.Display);
+  Serial.printf("header_height = %d\n", header_height); // 45
 
   // for testing
   LGFX_Device* gfx = &M5.Display;
   Serial.printf("width = %d\n", gfx->width());
   Serial.printf("height = %d\n", gfx->height());
+  Serial.printf("bin width = %d\n", (size_t)(gfx->width() / 60));
 }
 
 /// arduino loop() 
