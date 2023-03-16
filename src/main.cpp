@@ -4,6 +4,7 @@
 
 #include "A2DP_Speaker.hpp"
 #include "Simple_FFT.hpp"
+#include "Palette.hpp"
 
 #include <esp_log.h>
 
@@ -12,6 +13,7 @@ static constexpr char bt_device_name[] = "ESP32SPK";
 
 static wb::A2DP_Speaker a2dp_sink = { &M5.Speaker, 0 };
 static wb::Simple_FFT fft;
+static wb::Palette palette;
 
 /// need better way to do this
 #define FFT_SIZE 256
@@ -269,12 +271,14 @@ void gfxLoop(LGFX_Device* gfx)
         int32_t py = prev_y[bx];
         if (y != py)
         {
-          gfx->fillRect(x, y, bw - 1, py - y, bar_color[(y < py)]);
+          //gfx->fillRect(x, y, bw - 1, py - y, bar_color[(y < py)]);
+          gfx->fillRect(x, y, bw - 1, py - y, palette.get_color(y));
           prev_y[bx] = y;
         }
         py = peak_y[bx] + 1;
         if (py < y)
         {
+          //gfx->writeFastHLine(x, py - 1, bw - 1, bgcolor(gfx, py - 1));
           gfx->writeFastHLine(x, py - 1, bw - 1, bgcolor(gfx, py - 1));
         }
         else
@@ -284,6 +288,7 @@ void gfxLoop(LGFX_Device* gfx)
         if (peak_y[bx] != py)
         {
           peak_y[bx] = py;
+          //gfx->writeFastHLine(x, py, bw - 1, TFT_WHITE);
           gfx->writeFastHLine(x, py, bw - 1, TFT_WHITE);
         }
         
