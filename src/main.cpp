@@ -344,7 +344,7 @@ void setup(void)
 {  
   auto cfg = M5.config();
 #if defined ( ARDUINO )
-  cfg.serial_baudrate = 9600;   // default=115200. if "Serial" is not needed, set it to 0.
+  cfg.serial_baudrate = 115200;   // default=9600. if "Serial" is not needed, set it to 0.
 #endif
 
   M5.begin(cfg);

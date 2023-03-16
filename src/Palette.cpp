@@ -1,6 +1,8 @@
 #include "Palette.hpp"
 #include <FastLED.h>
 
+namespace wb {
+
 uint16_t rgb_to_uint16(float r, float g, float b)
 {
   int ri = (int)(r * 31.0f);
@@ -26,5 +28,7 @@ Palette::Palette()
     CRGB color = ColorFromPalette(blackToRedPal, i, 255, LINEARBLEND);
     colors[i] = rgb_to_uint16(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f);
   }
+}
+
 }
 

@@ -5,6 +5,8 @@
 
 #undef min
 
+namespace wb {
+
 class Palette
 {
 protected:
@@ -17,4 +19,6 @@ public:
     return colors[std::max(0, std::min(255, index))];
   }
 };
+
+} // end of namespace wb
 
