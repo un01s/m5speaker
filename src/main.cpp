@@ -250,12 +250,14 @@ void gfxLoop(LGFX_Device* gfx)
       if (bw < 3) { bw = 3; }
       int32_t dsp_height = gfx->height();
       int32_t fft_height = dsp_height - header_height - 1;
-      size_t xe = gfx->width() / bw;
+      size_t xe = gfx->width() / bw; // 320/5= 64
       if (xe > (FFT_SIZE/2)) { xe = (FFT_SIZE/2); }
+
       int32_t wave_next = ((header_height + dsp_height) >> 1) + (((256 - (raw_data[0] + raw_data[1])) * fft_height) >> 17);
 
       uint32_t bar_color[2] = { 0x000033u, 0x99AAFFu };
 
+      // xe = 64, this is the bin number, each bin has the width of 5
       for (size_t bx = 0; bx <= xe; ++bx)
       {
         size_t x = bx * bw;
@@ -286,8 +288,9 @@ void gfxLoop(LGFX_Device* gfx)
         }
         
         //Serial.printf("fft_height = %d\n", fft_height);
-        // ftt_height = 194
+        // ftt_height = 194 = 240 - 45(header_height) - 1
 
+        // last to draw to wave form of the input
         if (wave_enabled)
         {
           for (size_t bi = 0; bi < bw; ++bi)
