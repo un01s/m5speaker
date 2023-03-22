@@ -36,5 +36,6 @@ It has diffent code stucture in the UI. It has three different components that c
 * FFT equalizer
 * spectrum
 
+This code is based on M5Core2 library. It uses a different library of FFT.
 
 
