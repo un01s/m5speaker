@@ -267,6 +267,8 @@ void gfxLoop(LGFX_Device* gfx)
         int32_t f = fft.get(bx);
         int32_t y = (f * fft_height) >> 18;
         if (y > fft_height) { y = fft_height; }
+        ///Serial.printf("b=%d,y=%d\n",bx, y);
+
         y = dsp_height - y;
         int32_t py = prev_y[bx];
         if (y != py)
